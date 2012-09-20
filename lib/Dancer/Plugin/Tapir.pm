@@ -251,8 +251,6 @@ L<Tapir>, L<Dancer>
 
 Copyright (c) 2012 Eric Waters.  All rights reserved.  This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 
-The full text of the license can be found in the LICENSE file included with this module.
-
 =head1 AUTHOR
 
 Eric Waters <ewaters@gmail.com>
