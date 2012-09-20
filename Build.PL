@@ -1,0 +1,30 @@
+use Module::Build;
+
+my $build = Module::Build->new(
+	module_name => 'Dancer::Plugin::Tapir',
+	license     => 'perl',
+	sign        => 1,
+	create_readme => 1,
+	configure_requires => {
+		'Module::Build' => 0.4,
+	},
+	build_requires => {
+		'Test::Exception' => 0,
+	},
+	requires => {
+		'Tapir' => 0,
+		'IO::Capture' => 0,
+		'Dancer' => 0,
+		'JSON' => 0,
+	},
+	create_makefile_pl => 'small',
+	meta_merge => {
+		resources => {
+			repository => "http://github.com/ewaters/dancer-plugin-tapir",
+			bugtracker => "http://github.com/ewaters/dancer-plugin-tapir/issues?labels=bug",
+		},
+	},
+);
+
+$build->create_build_script;
+
