@@ -7,7 +7,7 @@ use Dancer::Test;
 use Dancer::Plugin::Tapir;
 
 config->{plugins}{Tapir} = {
-	thrift_idl    => $FindBin::Bin . '/thrift/dancer.thrift',
+	thrift_idl    => $FindBin::Bin . '/thrift/example.thrift',
 	handler_class => 'MyWebApp::Handler',
 };
 
@@ -16,15 +16,12 @@ $INC{'MyWebApp/Handler.pm'} = undef;
 	package MyWebApp::Handler;
 
 	use Moose;
+	use Tapir::Server::Handler::Signatures;
 	extends 'Tapir::Server::Handler::Class';
 
-	__PACKAGE__->service('Accounts');
+	set_service 'Accounts';
 
-	__PACKAGE__->add_method('createAccount');
-	sub createAccount {
-		my ($class, $call) = @_;
-		my %args = $call->args('plain');
-		my ($username, $password) = @args{'username', 'password'};
+	method createAccount ($username, $password) {
 		print "createAccount called with $username and $password\n";
 		$call->set_result({
 			id         => 42,
@@ -32,8 +29,13 @@ $INC{'MyWebApp/Handler.pm'} = undef;
 		});
 	}
 
-	__PACKAGE__->add_method('getAccount');
-	sub getAccount {
+	method getAccount ($username) {
+		print "getAccount called with $username\n";
+		$call->set_result({
+			id         => 42,
+			error      => "this will fail",
+			allocation => 1000,
+		});
 	}
 }
 
@@ -44,5 +46,7 @@ response_status_is [ GET => '/' ], 404, "No root route";
 response_status_is [ GET => '/accounts' ], 404, "No GET /accounts";
 response_status_is [ POST => '/accounts' ], 500, "POST /accounts exists (but throws internal error without args)";
 response_status_is [ POST => '/accounts?username=johndoe&password=abc123' ], 200, "POST /accounts with args";
+
+response_status_is [ GET => '/account/johndoe' ], 500, "GET /account/:username threw error due to invalid set_result() call";
 
 done_testing;

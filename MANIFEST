@@ -3,12 +3,6 @@ lib/Dancer/Plugin/Tapir.pm
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
-t/001_dancer_setup.t
-t/002_dancer_signatures.t
-t/003_dancer_plain.t
-t/thrift/dancer.thrift
-t/thrift/dancer_bad.thrift
-t/thrift/dancer_invalid.thrift
 README
 META.yml
 META.json

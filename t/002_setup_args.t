@@ -1,15 +1,8 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::Exception tests => 1;
 use FindBin;
-use Dancer qw(config);
-use Dancer::Test;
 use Dancer::Plugin::Tapir;
-
-config->{plugins}{Tapir} = {
-	thrift_idl    => $FindBin::Bin . '/thrift/dancer.thrift',
-	handler_class => 'MyWebApp::Handler',
-};
 
 $INC{'MyWebApp/Handler.pm'} = undef;
 {
@@ -38,13 +31,8 @@ $INC{'MyWebApp/Handler.pm'} = undef;
 		});
 	}
 }
-
-setup_thrift_handler;
-
-response_status_is [ GET => '/' ], 404, "No root route";
-
-response_status_is [ GET => '/accounts' ], 404, "No GET /accounts";
-response_status_is [ POST => '/accounts' ], 500, "POST /accounts exists (but throws internal error without args)";
-response_status_is [ POST => '/accounts?username=johndoe&password=abc123' ], 200, "POST /accounts with args";
-
-done_testing;
+lives_ok {
+	setup_thrift_handler
+		thrift_idl    => $FindBin::Bin . '/thrift/example.thrift',
+		handler_class => 'MyWebApp::Handler';
+} "Setup with args";

@@ -8,7 +8,7 @@ use Dancer::Plugin::Tapir;
 throws_ok { setup_thrift_handler } qr/Missing configuration settings/, "Omit settings";
 
 my %tapir_config = (
-	thrift_idl    => $FindBin::Bin . '/thrift/dancer.thrift',
+	thrift_idl    => $FindBin::Bin . '/thrift/example.thrift',
 	handler_class => 'MyWebApp::Handler',
 );
 config->{plugins}{Tapir} = \%tapir_config;
@@ -19,12 +19,12 @@ config->{plugins}{Tapir} = \%tapir_config;
 }
 
 {
-	local $tapir_config{thrift_idl} = $FindBin::Bin . '/thrift/dancer_bad.thrift';
+	local $tapir_config{thrift_idl} = $FindBin::Bin . '/thrift/bad.thrift';
 	throws_ok { setup_thrift_handler } qr/Parsing failed to consume all of the input/, "Pass a bad thrift_idl file";
 }
 
 {
-	local $tapir_config{thrift_idl} = $FindBin::Bin . '/thrift/dancer_invalid.thrift';
+	local $tapir_config{thrift_idl} = $FindBin::Bin . '/thrift/invalid.thrift';
 	throws_ok { setup_thrift_handler } qr/the following errors were found.+has no comments/s, "Pass a thrift file which fails the validation check";
 }
 
