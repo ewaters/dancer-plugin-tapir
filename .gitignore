@@ -1,1 +1,4 @@
 *.tar.gz
+Build
+_build
+blib

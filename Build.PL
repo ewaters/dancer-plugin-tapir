@@ -13,7 +13,7 @@ my $build = Module::Build->new(
 	},
 	requires => {
 		'Tapir' => 0,
-		'IO::Capture' => 0,
+		'Capture::Tiny' => 0,
 		'Dancer' => 0,
 		'JSON' => 0,
 	},
