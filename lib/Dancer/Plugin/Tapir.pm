@@ -51,7 +51,8 @@ use Dancer ':syntax';
 use Dancer::Plugin;
 use Carp;
 use Try::Tiny;
-use IO::Capture::Stdout;
+use Capture::Tiny qw(capture);
+use JSON::XS qw();
 
 # POE sessions will be created by Tapir::MethodCall; let's not see an error about POE never running
 use POE;
@@ -176,19 +177,28 @@ register setup_thrift_handler => sub {
 				return $set[0];
 			};
 
-			# TODO: Replace with Capture::Tiny
-			my $capture_stdout = IO::Capture::Stdout->new();
-			$capture_stdout->start();
-
-			# Execute the actions
-			while (my $action = $call->get_next_action) {
-				$action->($call);
-				last if $call_is_finished_sub->();
+			my ($stdout, $stderr) = capture {
+				# Execute the actions
+				while (my $action = $call->get_next_action) {
+					try {
+						$action->($call);
+					}
+					catch {
+						$logger->error($_);
+						die $_;
+					};
+					last if $call_is_finished_sub->();
+				}
+			};
+			if ($stdout) {
+				foreach my $line (split /\n/, $stdout) {
+					$logger->info($handler_class.' in handling '.$call->method->name.' emitted: '.$line);
+				}
 			}
-
-			$capture_stdout->stop();
-			foreach my $line ($capture_stdout->read()) {
-				$logger->info($handler_class.' in handling '.$call->method->name.' emitted: '.$line);
+			if ($stderr) {
+				foreach my $line (split /\n/, $stderr) {
+					$logger->error($handler_class.' in handling '.$call->method->name.' emitted: '.$line);
+				}
 			}
 
 			my $result_key = $call_is_finished_sub->();
@@ -199,28 +209,57 @@ register setup_thrift_handler => sub {
 
 			if ($result_key eq 'result') {
 				# Validate the result value against the Thrift specification
+				my $response;
 				try {
-					$thrift_message->compose_reply($result_value);
+					my $thrift_reply = $thrift_message->compose_reply($result_value);
+					$response = Tapir::MethodCall::dereference_fieldset($thrift_reply->arguments, { plain => 1 });
+					$response = $response->{return_value};
 				}
 				catch {
 					die "Error in composing $method_message_class result: $_\n";
 				};
-				return $result_value;
+
+
+				if (my $extra_actions = $call->heap_index('rest_result')) {
+					if (my $code = $extra_actions->{status_code}) {
+						status $code;
+					}
+					if (my $headers = $extra_actions->{headers}) {
+						headers %$headers;
+					}
+				}
+
+				if (ref $response) {
+					$response = JSON::XS::encode_json($response);
+				}
+
+				header 'content-type' => 'application/json';
+				return $response;
 			}
 			else {
 				die $result_value;
 			}
 		};
-		
+
+		my $wrapper_sub = sub {
+			my $result;
+			try {
+				$result = $dancer_sub->(@_);
+			}
+			catch {
+				$result = JSON::XS->new->allow_nonref->allow_blessed->encode($_);
+				header 'content-type' => 'application/json';
+				status 'error';
+			};
+			return $result;
+		};
+
 		# Install the route
 		{
 			no strict 'refs';
-			$dancer_method->($dancer_route => $dancer_sub);
+			$dancer_method->($dancer_route => $wrapper_sub);
 		}
 	}
-
-	# FIXME: This each call should auto-detect which serializer to use, contextually
-	set serializer => 'JSON';
 };
 
 register_plugin;

@@ -1,2 +1,5 @@
 *.tar.gz
 .workonrc
+Build
+_build
+blib
