@@ -157,6 +157,19 @@ register setup_thrift_handler => sub {
 			my $request = request;
 			my $params = $request->params;
 
+			# Decode the JSON payload
+			if ($request->content_length && $request->content_type && $request->content_type eq 'application/json' && length $request->body) {
+				my $body = try {
+					$json_xs->decode($request->body)
+				}
+				catch {
+					print STDERR "JSON payload was:\n" . $request->body . "\n";
+					die "Error in decoding the JSON payload (length " . $request->content_length . "): $_";
+				};
+				die unless $body && ref $body && ref $body eq 'HASH';
+				$params->{$_} = $body->{$_} foreach keys %$body;
+			}
+
 			my $thrift_message;
 			try {
 				$thrift_message = $method_message_class->compose_message_call(%$params);
@@ -258,7 +271,7 @@ register setup_thrift_handler => sub {
 			}
 			catch {
 				my $ex = $_;
-				if (ref $ex && blessed $ex && $ex->isa('Thrift::Parser::Exception')) {
+				if (ref $ex && blessed $ex && $ex->isa('Exception::Class::Base')) {
 					# Look for a stack trace frame that is not Thrift::Parser so we can see
 					# any thrift-related errors from the perspective of the caller
 					my ($trace_frame, $first_frame);
@@ -278,7 +291,7 @@ register setup_thrift_handler => sub {
 				}
 				else {
 					$logger->error("$ex");
-					$result = $json_xs->encode({ exception => $ex });
+					$result = $json_xs->encode({ exception => "$ex" });
 				}
 				header 'content-type' => 'application/json';
 				status 'error';
