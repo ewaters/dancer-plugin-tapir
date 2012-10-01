@@ -66,7 +66,7 @@ use Tapir::MethodCall;
 
 my $json_xs = JSON::XS->new->allow_nonref->allow_blessed;
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 register setup_thrift_handler => sub {
 	my ($self, @args) = plugin_args(@_);

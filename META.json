@@ -26,8 +26,8 @@
       },
       "runtime" : {
          "requires" : {
+            "Capture::Tiny" : "0",
             "Dancer" : "0",
-            "IO::Capture" : "0",
             "JSON" : "0",
             "Tapir" : "0"
          }
@@ -40,7 +40,7 @@
       },
       "Dancer::Plugin::Tapir" : {
          "file" : "lib/Dancer/Plugin/Tapir.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       }
    },
    "release_status" : "stable",
@@ -55,5 +55,5 @@
          "url" : "http://github.com/ewaters/dancer-plugin-tapir"
       }
    },
-   "version" : "0.01"
+   "version" : "0.02"
 }
