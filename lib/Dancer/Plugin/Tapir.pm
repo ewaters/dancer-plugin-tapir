@@ -53,6 +53,7 @@ use Carp;
 use Try::Tiny;
 use Capture::Tiny qw(capture);
 use JSON::XS qw();
+use Scalar::Util qw(blessed);
 
 # POE sessions will be created by Tapir::MethodCall; let's not see an error about POE never running
 use POE;
@@ -62,6 +63,8 @@ use Thrift::IDL;
 use Thrift::Parser;
 use Tapir::Validator;
 use Tapir::MethodCall;
+
+my $json_xs = JSON::XS->new->allow_nonref->allow_blessed;
 
 our $VERSION = 0.01;
 
@@ -148,6 +151,9 @@ register setup_thrift_handler => sub {
 		my $method_message_class = $parser->{methods}{$method_name}{class};
 
 		my $dancer_sub = sub {
+
+		## Create a method call from the Dancer request
+
 			my $request = request;
 			my $params = $request->params;
 
@@ -168,6 +174,9 @@ register setup_thrift_handler => sub {
 				logger    => $logger,
 			);
 
+		## Pass call to handler class and inspect result
+
+			# Ask the handler class to add one or more action to the call object
 			$handler_class->add_call_actions($call);
 
 			# We can't check is_finished since that's only set via a POE post; check instead to see
@@ -177,68 +186,69 @@ register setup_thrift_handler => sub {
 				return $set[0];
 			};
 
-			my ($stdout, $stderr) = capture {
-				# Execute the actions
+			my $run_call_actions_sub = sub {
+				# Execute the actions until one of them calls set_result, set_exception or set_error
 				while (my $action = $call->get_next_action) {
-					try {
-						$action->($call);
-					}
-					catch {
-						$logger->error($_);
-						die $_;
-					};
+					$action->($call);
 					last if $call_is_finished_sub->();
 				}
 			};
-			if ($stdout) {
-				foreach my $line (split /\n/, $stdout) {
-					$logger->info($handler_class.' in handling '.$call->method->name.' emitted: '.$line);
-				}
-			}
-			if ($stderr) {
-				foreach my $line (split /\n/, $stderr) {
-					$logger->error($handler_class.' in handling '.$call->method->name.' emitted: '.$line);
+
+			# Wrap the call in a Capture::Tiny so that we can send STDOUT and STDERR to Dancer
+			my ($stdout, $stderr) = capture { $run_call_actions_sub->() };
+			foreach ([ info => $stdout ], [ error => $stderr ]) {
+				my ($level, $string) = @$_;
+				next unless $string;
+				foreach my $line (split /\n/, $string) {
+					$logger->$level($handler_class.' in handling '.$call->method->name.' emitted: '.$line);
 				}
 			}
 
+			# Figure out if the handler set result, error or exception and fetch the value
 			my $result_key = $call_is_finished_sub->();
 			if (! $result_key) {
 				die $handler_class.' in handling '.$call->method->name." never called set_result, set_exception or set_error\n";
 			}
 			my $result_value = $call->heap_index($result_key);
 
+			# The handler can communicate with us via 'rest_result' in the heap.  If set, use this to send
+			# extra headers or override our default status code
+			my $status_code_set;
+			if (my $extra_actions = $call->heap_index('rest_result')) {
+				if (my $code = $extra_actions->{status_code}) {
+					status $code;
+					$status_code_set = $code;
+				}
+				if (my $headers = $extra_actions->{headers}) {
+					headers %$headers;
+				}
+			}
+
+		## Setup the response and return
+
+			# The handler set result.  Validate the result value against the Thrift specification, and return
+			# it encoded in JSON.
 			if ($result_key eq 'result') {
-				# Validate the result value against the Thrift specification
 				my $response;
 				try {
+					# Compose a reply to the method using the result value.  This will throw if any values are 
+					# missing or not valid for the specification.  This returns a Thrift::Parser::Message which
+					# contains the reply as a field set keyed on 'return_value'.  Let's turn that into JSON.
 					my $thrift_reply = $thrift_message->compose_reply($result_value);
 					$response = Tapir::MethodCall::dereference_fieldset($thrift_reply->arguments, { plain => 1 });
-					$response = $response->{return_value};
+					$response = $json_xs->encode($response->{return_value});
 				}
 				catch {
 					die "Error in composing $method_message_class result: $_\n";
 				};
-
-
-				if (my $extra_actions = $call->heap_index('rest_result')) {
-					if (my $code = $extra_actions->{status_code}) {
-						status $code;
-					}
-					if (my $headers = $extra_actions->{headers}) {
-						headers %$headers;
-					}
-				}
-
-				if (ref $response) {
-					$response = JSON::XS::encode_json($response);
-				}
-
 				header 'content-type' => 'application/json';
 				return $response;
 			}
-			else {
-				die $result_value;
-			}
+
+			# The handler set either 'error' or 'exception'; return a status 500 with a JSON payload describing the problem
+			header 'content-type' => 'application/json';
+			status 500 unless $status_code_set;
+			return $json_xs->encode({ $result_key => $result_value });
 		};
 
 		my $wrapper_sub = sub {
@@ -247,10 +257,34 @@ register setup_thrift_handler => sub {
 				$result = $dancer_sub->(@_);
 			}
 			catch {
-				$result = JSON::XS->new->allow_nonref->allow_blessed->encode($_);
+				my $ex = $_;
+				if (ref $ex && blessed $ex && $ex->isa('Thrift::Parser::Exception')) {
+					# Look for a stack trace frame that is not Thrift::Parser so we can see
+					# any thrift-related errors from the perspective of the caller
+					my ($trace_frame, $first_frame);
+					while (my $frame = $ex->trace->next_frame) {
+						$first_frame ||= $frame;
+						next if $frame->package =~ m{^Thrift};
+						$trace_frame = $frame;
+						last;
+					}
+					$trace_frame ||= $first_frame;
+
+					my $string_error = $ex->error . " in " . $trace_frame->as_string;
+					$logger->error($string_error);
+					$result = $json_xs->encode({
+						error => $string_error,
+					});
+				}
+				else {
+					$logger->error("$ex");
+					$result = $json_xs->encode({ exception => $ex });
+				}
 				header 'content-type' => 'application/json';
 				status 'error';
 			};
+
+			# Returning the result will print it to the HTTP response
 			return $result;
 		};
 
