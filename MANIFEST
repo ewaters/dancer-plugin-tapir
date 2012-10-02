@@ -5,6 +5,7 @@ MANIFEST			This list of files
 META.json
 META.yml
 README
+Changes
 t/001_setup.t
 t/002_setup_args.t
 t/003_handler.t

@@ -19,14 +19,14 @@ provides:
     version: 0
   Dancer::Plugin::Tapir:
     file: lib/Dancer/Plugin/Tapir.pm
-    version: 0.02
+    version: 0.03
 requires:
   Capture::Tiny: 0
-  Dancer: 0
+  Dancer: 1.31
   JSON: 0
-  Tapir: 0
+  Tapir: 0.02
 resources:
   bugtracker: http://github.com/ewaters/dancer-plugin-tapir/issues?labels=bug
   license: http://dev.perl.org/licenses/
   repository: http://github.com/ewaters/dancer-plugin-tapir
-version: 0.02
+version: 0.03

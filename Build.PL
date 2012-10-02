@@ -12,9 +12,9 @@ my $build = Module::Build->new(
 		'Test::Exception' => 0,
 	},
 	requires => {
-		'Tapir' => 0,
+		'Tapir' => 0.02,
 		'Capture::Tiny' => 0,
-		'Dancer' => 0,
+		'Dancer' => 1.3100,
 		'JSON' => 0,
 	},
 	create_makefile_pl => 'small',

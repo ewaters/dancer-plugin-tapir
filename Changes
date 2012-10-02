@@ -1,0 +1,13 @@
+Revision history for Dancer::Plugin::Tapir
+
+v0.03  Tue Oct  2 14:49:34 EDT 2012
+
+  - Better error handling
+  - Parse JSON payload
+  - Explicit version requirements for Dancer and Tapir
+
+v0.02  
+
+  - Initial release
+
+
