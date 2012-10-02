@@ -46,10 +46,10 @@ setup_thrift_handler
 response_status_is [ GET => '/' ], 404, "No root route";
 
 response_status_is [ GET => '/accounts' ], 404, "No GET /accounts";
-response_status_is [ POST => '/accounts' ], 500, "POST /accounts exists (but throws internal error without args)";
+response_status_is [ POST => '/accounts' ], 400, "POST /accounts exists (but throws user error without args)";
 response_status_is [ POST => '/accounts?username=johndoe&password=abc123' ], 200, "POST /accounts with args";
 
-response_status_is [ GET => '/account/johndoe' ], 500, "GET /account/:username threw error due to invalid set_result() call";
+response_status_is [ GET => '/account/johndoe' ], 500, "GET /account/:username threw internal error due to invalid set_result() call";
 
 {
 	package MyWebApp::Handler;
