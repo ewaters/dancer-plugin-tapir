@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More;
+use Test::More tests => 6;
 use FindBin;
 use Dancer qw(config);
 use Dancer::Test;
@@ -39,7 +39,7 @@ $INC{'MyWebApp/Handler.pm'} = undef;
     }
 }
 
-setup_thrift_handler
+setup_tapir_handler
     thrift_idl    => $FindBin::Bin . '/thrift/example.thrift',
     handler_class => 'MyWebApp::Handler';
 
@@ -62,5 +62,3 @@ response_status_is [ GET => '/account/johndoe' ], 500, "GET /account/:username t
 }
 
 response_status_is [ GET => '/account/johndoe' ], 200, "GET /account/:username with valid set_result()";
-
-done_testing;

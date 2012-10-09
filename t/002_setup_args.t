@@ -32,7 +32,7 @@ $INC{'MyWebApp/Handler.pm'} = undef;
     }
 }
 lives_ok {
-    setup_thrift_handler
+    setup_tapir_handler
         thrift_idl    => $FindBin::Bin . '/thrift/example.thrift',
         handler_class => 'MyWebApp::Handler';
 } "Setup with args";

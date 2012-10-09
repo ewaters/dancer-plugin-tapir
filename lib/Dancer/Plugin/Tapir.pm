@@ -1,52 +1,5 @@
 package Dancer::Plugin::Tapir;
 
-=head1 NAME
-
-Dancer::Plugin::Tapir - Associate a Tapir handler with Dancer routes
-
-=head1 SYNOPSIS
-
-  use Dancer;
-  use Dancer::Plugin::Tapir;
-
-  setup_thrift_handler
-    thrift_idl    => 'thrift/service.thrift',
-    handler_class => 'MyAPI::Service';
-
-=head1 DESCRIPTION
-
-The goal of this package is to quickly and without fuss expose a L<Tapir> service via L<Dancer> via a RESTful API.  Doing so requires no additional coding, and only requires a simple comment added to your Thrift methods.
-
-This plugin exports the method C<setup_thrift_handler> into the caller.  Call it with either a list of arguments or using your Dancer configuration (see below).
-
-The handler class must be a subclass of L<Tapir::Server::Handler::Class> and have registered methods for each Thrift method of the Thrift service.
-
-The Dancer routes that will be exposed match up with the C<@rest> Thrift documentation tag.  For example:
-
-  /*
-    Create a new account
-    @rest POST /accounts
-  */
-  account createAccount (
-    1: username username,
-    2: string   password
-  )
-
-This will create a route C<POST /accounts> which will call the method C<createAccount> in the handler class.  The Dancer method C<params> will be used to extract both query string and payload parameters, and will be used to compose the thrift message passed to the L<Tapir::Server::Handler>.
-
-Control over the HTTP status code returned to the user is still being worked out, as are being able to set headers in the HTTP response.  At the moment, the result is serialized via JSON but will in the future be serialized according to the Accept headers of the request.
-
-=head1 CONFIGURATION
-
-Add something like this to your YAML config:
-
-  plugins:
-    Tapir:
-      thrift_idl: thrift/service.thrift
-      handler_class: MyAPI::Service
-
-=cut
-
 use Dancer ':syntax';
 use Dancer::Plugin;
 use Carp;
@@ -63,12 +16,55 @@ use Thrift::IDL;
 use Thrift::Parser;
 use Tapir::Validator;
 use Tapir::MethodCall;
+use Tapir::Documentation::NaturalDocs;
+use File::Spec;
 
 my $json_xs = JSON::XS->new->allow_nonref->allow_blessed;
 
 our $VERSION = 0.03;
 
-register setup_thrift_handler => sub {
+register setup_tapir_documentation => sub {
+    my ($self, @args) = plugin_args(@_);
+    # $self is undef for Dancer 1
+    my $conf = plugin_setting();
+    my %conf = ( %$conf, @args );
+
+    ## Validate the plugin settings
+
+    if (my @missing_args = grep { ! defined $conf{$_} } qw(thrift_idl path documentation_staging_dir)) {
+        croak "Missing configuration settings for setup_tapir_docs: " . join('; ', @missing_args);
+    }
+    if (! $conf{naturaldocs_bin}) {
+        $conf{naturaldocs_bin} = `which NaturalDocs`;
+        chomp $conf{naturaldocs_bin};
+        if (! $conf{naturaldocs_bin}) {
+            croak "You must pass 'naturaldocs_bin' to indicate where the binary NaturalDocs is";
+        }
+    }
+
+    my $output_dir = File::Spec->catdir($conf{documentation_staging_dir}, 'output');
+
+    print "Building documentation to $output_dir\n";
+    Tapir::Documentation::NaturalDocs->build(
+        input_fn        => $conf{thrift_idl},
+        temp_dir        => File::Spec->catdir($conf{documentation_staging_dir}, 'temp'),
+        output_dir      => $output_dir,
+        naturaldocs_bin => $conf{naturaldocs_bin},
+    );
+
+    get "$conf{path}**" => sub {
+        my ($files) = splat;
+        my $file = join '/', @$files;
+        if (! length $file) {
+            $file = 'index.html';
+        }
+        my $path = File::Spec->catfile($output_dir, $file);
+        info "Serving $path";
+        return send_file($path, system_path => 1);
+    };
+};
+
+register setup_tapir_handler => sub {
     my ($self, @args) = plugin_args(@_);
     # $self is undef for Dancer 1
     my $conf = plugin_setting();
@@ -352,6 +348,51 @@ register_plugin;
     sub error   { shift; Dancer::Logger::error(@_); }
     sub info    { shift; Dancer::Logger::info(@_); }
 }
+
+=head1 NAME
+
+Dancer::Plugin::Tapir - Associate a Tapir handler with Dancer routes
+
+=head1 SYNOPSIS
+
+  use Dancer;
+  use Dancer::Plugin::Tapir;
+
+  setup_tapir_handler
+    thrift_idl    => 'thrift/service.thrift',
+    handler_class => 'MyAPI::Service';
+
+=head1 DESCRIPTION
+
+The goal of this package is to quickly and without fuss expose a L<Tapir> service via L<Dancer> via a RESTful API.  Doing so requires no additional coding, and only requires a simple comment added to your Thrift methods.
+
+This plugin exports the method C<setup_tapir_handler> into the caller.  Call it with either a list of arguments or using your Dancer configuration (see below).
+
+The handler class must be a subclass of L<Tapir::Server::Handler::Class> and have registered methods for each Thrift method of the Thrift service.
+
+The Dancer routes that will be exposed match up with the C<@rest> Thrift documentation tag.  For example:
+
+  /*
+    Create a new account
+    @rest POST /accounts
+  */
+  account createAccount (
+    1: username username,
+    2: string   password
+  )
+
+This will create a route C<POST /accounts> which will call the method C<createAccount> in the handler class.  The Dancer method C<params> will be used to extract both query string and payload parameters, and will be used to compose the thrift message passed to the L<Tapir::Server::Handler>.
+
+Control over the HTTP status code returned to the user is still being worked out, as are being able to set headers in the HTTP response.  At the moment, the result is serialized via JSON but will in the future be serialized according to the Accept headers of the request.
+
+=head1 CONFIGURATION
+
+Add something like this to your YAML config:
+
+  plugins:
+    Tapir:
+      thrift_idl: thrift/service.thrift
+      handler_class: MyAPI::Service
 
 =head1 SEE ALSO
 
