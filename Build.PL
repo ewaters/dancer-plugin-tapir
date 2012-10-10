@@ -12,7 +12,7 @@ my $build = Module::Build->new(
 		'Test::Exception' => 0,
 	},
 	requires => {
-		'Tapir' => 0.02,
+		'Tapir' => 0.03,
 		'Capture::Tiny' => 0,
 		'Dancer' => 1.3100,
 		'JSON' => 0,

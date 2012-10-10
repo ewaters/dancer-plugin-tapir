@@ -21,7 +21,7 @@ use File::Spec;
 
 my $json_xs = JSON::XS->new->allow_nonref->allow_blessed;
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 register setup_tapir_documentation => sub {
     my ($self, @args) = plugin_args(@_);

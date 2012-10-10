@@ -5,7 +5,7 @@ SYNOPSIS
       use Dancer;
       use Dancer::Plugin::Tapir;
 
-      setup_thrift_handler
+      setup_tapir_handler
         thrift_idl    => 'thrift/service.thrift',
         handler_class => 'MyAPI::Service';
 
@@ -14,7 +14,7 @@ DESCRIPTION
     service via Dancer via a RESTful API. Doing so requires no additional
     coding, and only requires a simple comment added to your Thrift methods.
 
-    This plugin exports the method "setup_thrift_handler" into the caller.
+    This plugin exports the method "setup_tapir_handler" into the caller.
     Call it with either a list of arguments or using your Dancer
     configuration (see below).
 

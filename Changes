@@ -1,5 +1,10 @@
 Revision history for Dancer::Plugin::Tapir
 
+v0.04  Tue Oct  9 23:33:15 EDT 2012
+
+  - Rename setup_thrift_handler to setup_tapir_handler
+  - Implement setup_tapir_documentation and test
+
 v0.03  Tue Oct  2 14:49:34 EDT 2012
 
   - Better error handling
