@@ -142,6 +142,7 @@ register setup_tapir_handler => sub {
 
     while (my ($method_name, $method_idl) = each %methods) {
         my ($http_method, $dancer_route) = @{ $method_idl->{doc}{rest} }{'method', 'route'};
+        $dancer_route =~ s/\s+$//; # FIXME: There shouldn't be whitespace at the end of the route
         my $dancer_method = 'Dancer::' . $http_method;
 
         my $method_message_class = $parser->{methods}{$method_name}{class};
