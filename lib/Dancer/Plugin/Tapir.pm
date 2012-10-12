@@ -399,6 +399,10 @@ Add something like this to your YAML config:
 
 L<Tapir>, L<Dancer>
 
+=head1 LICENSE
+
+This library is free software; you may redistribute it and/or modify it under the same terms as Perl itself
+
 =head1 COPYRIGHT
 
 Copyright (c) 2012 Eric Waters.  All rights reserved.  This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.

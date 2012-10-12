@@ -11,11 +11,15 @@ my $build = Module::Build->new(
 	build_requires => {
 		'Test::Exception' => 0,
 	},
-	requires => {
-		'Tapir' => 0.03,
-		'Capture::Tiny' => 0,
-		'Dancer' => 1.3100,
-		'JSON' => 0,
+	requires             => {
+		'perl'           => 5.006,
+		'Tapir'          => 0.03,
+		'Capture::Tiny'  => 0,
+		'Dancer'         => 1.3100,
+		'JSON'           => 0,
+		'JSON::XS'       => 0,
+		'Thrift::Parser' => 0,
+		'Try::Tiny'      => 0,
 	},
 	create_makefile_pl => 'small',
 	meta_merge => {
