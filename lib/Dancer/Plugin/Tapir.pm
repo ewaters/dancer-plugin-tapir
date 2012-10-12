@@ -7,6 +7,7 @@ use Try::Tiny;
 use Capture::Tiny qw(capture);
 use JSON::XS qw();
 use Scalar::Util qw(blessed);
+use File::Spec;
 
 # POE sessions will be created by Tapir::MethodCall; let's not see an error about POE never running
 use POE;
@@ -17,7 +18,6 @@ use Thrift::Parser;
 use Tapir::Validator;
 use Tapir::MethodCall;
 use Tapir::Documentation::NaturalDocs;
-use File::Spec;
 
 my $json_xs = JSON::XS->new->allow_nonref->allow_blessed;
 
@@ -35,7 +35,7 @@ register setup_tapir_documentation => sub {
         croak "Missing configuration settings for setup_tapir_docs: " . join('; ', @missing_args);
     }
     if (! $conf{naturaldocs_bin}) {
-        $conf{naturaldocs_bin} = `which NaturalDocs`;
+        $conf{naturaldocs_bin} = which('NaturalDocs');
         chomp $conf{naturaldocs_bin};
         if (! $conf{naturaldocs_bin}) {
             croak "You must pass 'naturaldocs_bin' to indicate where the binary NaturalDocs is";
@@ -331,6 +331,15 @@ register setup_tapir_handler => sub {
 };
 
 register_plugin;
+
+sub which {
+    my ($bin) = @_;
+    foreach my $path (split /:/, $ENV{PATH}) {
+        my $possible_path = File::Spec->catfile($path, $bin);
+        return $possible_path if -x $possible_path;
+    }
+    return;
+}
 
 {
     package Dancer::LoggerMockObject;
