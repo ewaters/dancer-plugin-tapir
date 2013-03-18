@@ -166,6 +166,19 @@ register setup_tapir_handler => sub {
                 die unless $body && ref $body && ref $body eq 'HASH';
                 $params->{$_} = $body->{$_} foreach keys %$body;
             }
+            else {
+                # Allow the user to pass "?$json_string" in query string
+                my @params = $request->params('query');
+                if (int @params == 2 && $params[1] eq '') {
+                    my $query_json = try {
+                        $json_xs->decode($params[0]);
+                    };
+                    if ($query_json) {
+                        delete $params->{ $params[0] };
+                        $params->{$_} = $query_json->{$_} foreach keys %$query_json;
+                    }
+                }
+            }
 
             my $thrift_message;
             try {
