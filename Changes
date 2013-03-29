@@ -1,5 +1,11 @@
 Revision history for Dancer-Plugin-Tapir
 
+v0.05  Fri, 29 Mar 2013 11:28:09 -0400
+
+ - Allow ?{JSON} passed to GET routes
+ - Replace `which` with my own function
+ - Adding Kwalitee
+
 v0.04  Tue, 9 Oct 2012 23:35:42 -0400
 
  - Bump version
